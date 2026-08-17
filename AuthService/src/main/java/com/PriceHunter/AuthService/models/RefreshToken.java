@@ -19,6 +19,5 @@ public class RefreshToken {
     private String tokenHash;
     private LocalDateTime createdAt;
     private LocalDateTime expiresAt;
-    private String deviceInfo;
     private boolean revoked;
 }

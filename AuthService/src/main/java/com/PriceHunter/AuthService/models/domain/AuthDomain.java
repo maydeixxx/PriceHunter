@@ -46,11 +46,7 @@ public class AuthDomain {
         this.lastLoginAt = lastLoginAt;
     }
 
-    public static AuthDomain createAuthModel(UUID id, String email, String passwordHash, Role role, Boolean enabled, Boolean locked, LocalDateTime createdAt, LocalDateTime lastLoginAt) {
-        if (id == null) {
-            throw new AuthArgumentException("id can`t be null");
-        }
-
+    public static AuthDomain createAuthModel(String email, String passwordHash, Role role, Boolean enabled, Boolean locked, LocalDateTime createdAt, LocalDateTime lastLoginAt) {
         if (email == null || email.isBlank()) {
             throw new AuthArgumentException("email cant be blank or null");
         }
@@ -71,7 +67,8 @@ public class AuthDomain {
             throw new AuthArgumentException("timestamps cant be null");
         }
 
-        return new AuthDomain(id, email, passwordHash, role, enabled, locked, createdAt, lastLoginAt);
+        UUID uuid = UUID.randomUUID();
+        return new AuthDomain(uuid, email, passwordHash, role, enabled, locked, createdAt, lastLoginAt);
     }
 
     public void updateLastLoginAt(LocalDateTime newLastLoginAt) {
