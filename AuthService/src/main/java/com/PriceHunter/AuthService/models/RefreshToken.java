@@ -11,10 +11,10 @@ import java.util.UUID;
 @Table(name = "refresh_tokens")
 public class RefreshToken {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     private UUID userId;
+    private String email;
 
     private String tokenHash;
     private LocalDateTime createdAt;
