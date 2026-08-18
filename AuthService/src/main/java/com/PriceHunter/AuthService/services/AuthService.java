@@ -7,8 +7,7 @@ import com.PriceHunter.AuthService.models.domain.AuthDomain;
 import com.PriceHunter.AuthService.models.domain.RefreshTokenDomain;
 import com.PriceHunter.AuthService.models.dto.RegisterDTO;
 import com.PriceHunter.AuthService.models.dto.TokensDto;
-import com.PriceHunter.AuthService.models.exceptions.AuthExistsException;
-import com.PriceHunter.AuthService.models.exceptions.RefreshTokenNotFoundException;
+import com.PriceHunter.AuthService.models.exceptions.*;
 import com.PriceHunter.AuthService.services.interfaces.AuthMapper;
 import com.PriceHunter.AuthService.services.interfaces.AuthRepository;
 import com.PriceHunter.AuthService.services.interfaces.RefreshTokenMapper;
@@ -26,6 +25,7 @@ import javax.crypto.SecretKey;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -81,17 +81,15 @@ public class AuthService {
             authRepository.save(createdAuth);
             log.info("Saved new auth, id - {}", createdAuth.getId());
 
-            String refreshTokenText = UUID.randomUUID().toString() + UUID.randomUUID();
-            String refreshTokenHash = passwordEncoder.encode(refreshTokenText);
-            RefreshToken refreshToken = refreshTokenMapper.domainToEntity(RefreshTokenDomain.createRefreshToken(createdAuth.getId(), createdAuth.getEmail(), refreshTokenHash, LocalDateTime.now(), LocalDateTime.now().plusDays(20)));
-            refreshTokenRepository.save(refreshToken);
-
+            String refreshTokenText = saveNewRefreshToken(createdAuth.getId(), createdAuth.getEmail());
             String accessToken = generateAccessToken(email, createdAuth.getId());
 
             return TokensDto.builder()
                     .accessToken(accessToken)
                     .refreshToken(refreshTokenText)
                     .build();
+        } catch (AuthExistsException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Unexpected error while registering user: {}", e.getMessage());
             throw new RuntimeException(String.format("Internal server error: %s", e.getMessage()));
@@ -102,33 +100,75 @@ public class AuthService {
     @Transactional
     public TokensDto rotateToken(String refreshTokenText) {
         try {
-            //TODO поиск токена рефреш токена
-
-            if (refreshToken.isEmpty()) {
-                throw new RefreshTokenNotFoundException(String.format("Refresh token %s not found", refreshToken));
+            if (refreshTokenText == null || refreshTokenText.isBlank()) {
+                throw new IllegalArgumentException("Token is null or blank");
             }
 
-            refreshToken.get().setRevoked(true);
-            String newRefreshTokenText = UUID.randomUUID().toString() + UUID.randomUUID();
-            saveNewRefreshToken(newRefreshTokenText, refreshToken.get().getUserId(), refreshToken.get().getEmail());
+            String[] splitToken = refreshTokenText.split("\\.");
+            if (splitToken.length != 2) {
+                throw new MalformedTokenException("Token is malformed.");
+            }
+            String tokenId = splitToken[0];
+            String tokenSecret = splitToken[1];
 
-            String accessToken = generateAccessToken(refreshToken.get().getEmail(), refreshToken.get().getUserId());
+            Optional<RefreshToken> optionalRefreshToken;
+            try {
+                UUID tokenUuid = UUID.fromString(tokenId);
+                optionalRefreshToken = refreshTokenRepository.findRefreshTokenById(tokenUuid);
+            } catch (IllegalArgumentException e) {
+                throw new RefreshTokenNotFoundException("Token id is wrong");
+            }
+
+            if (optionalRefreshToken.isEmpty()) {
+                throw new RefreshTokenNotFoundException("Refresh token not found");
+            }
+
+            RefreshToken refreshToken = optionalRefreshToken.get();
+
+            if (!passwordEncoder.matches(tokenSecret, refreshToken.getTokenHash())) {
+                throw new RefreshTokenNotFoundException("Invalid token");
+            }
+
+            if (refreshToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+                throw new RefreshTokenExpiredException("Token expired");
+            }
+
+            if (refreshToken.isRevoked()) {
+
+                log.warn("TOKEN INCIDENT: userId = {}, tokenId = {}, email = {}", refreshToken.getUserId(), refreshToken.getId(), refreshToken.getEmail());
+                revokeAllUsersTokens(refreshToken.getUserId());
+                throw new TokenStoleException("Token is reused! Please re-login in your account");
+            }
+
+            refreshToken.setRevoked(true);
+            String newRefreshToken = saveNewRefreshToken(refreshToken.getUserId(), refreshToken.getEmail());
+
+            String accessToken = generateAccessToken(refreshToken.getEmail(), refreshToken.getUserId());
 
             return TokensDto.builder()
-                    .refreshToken(newRefreshTokenText)
+                    .refreshToken(newRefreshToken)
                     .accessToken(accessToken)
                     .build();
+        } catch (TokenStoleException | RefreshTokenExpiredException | RefreshTokenNotFoundException | MalformedTokenException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Error while rotating token: {}", e.getMessage());
             throw new RuntimeException(String.format("Internal server error: %s", e.getMessage()));
         }
     }
 
-    private void saveNewRefreshToken(String refreshTokenText, UUID authId, String email) {
+    @Transactional
+    protected void revokeAllUsersTokens(UUID userId) {
+        List<RefreshToken> refreshTokensByUserId = refreshTokenRepository.findRefreshTokensByUserId(userId);
+        refreshTokensByUserId.forEach(token -> token.setRevoked(true));
+    }
+
+    private String saveNewRefreshToken(UUID userId, String email) {
         try {
-            String refreshTokenHash = passwordEncoder.encode(refreshTokenText);
-            RefreshToken refreshToken = refreshTokenMapper.domainToEntity(RefreshTokenDomain.createRefreshToken(authId, email, refreshTokenHash, LocalDateTime.now(), LocalDateTime.now().plusDays(20)));
-            refreshTokenRepository.save(refreshToken);
+            String tokenSecret = UUID.randomUUID().toString();
+            RefreshTokenDomain savedToken = RefreshTokenDomain.createRefreshToken(userId, email, passwordEncoder.encode(tokenSecret), LocalDateTime.now(), LocalDateTime.now().plusDays(30));
+            refreshTokenRepository.save(refreshTokenMapper.domainToEntity(savedToken));
+            return savedToken.getId() + "." + tokenSecret;
         } catch (Exception e) {
             log.error("Error saving refresh token: {}", e.getMessage());
             throw new RuntimeException(String.format("Internal server error: %s", e.getMessage()));
