@@ -2,11 +2,11 @@ package com.PriceHunter.AuthService.services;
 
 import com.PriceHunter.AuthService.models.AuthEntity;
 import com.PriceHunter.AuthService.models.RefreshToken;
-import com.PriceHunter.AuthService.models.Role;
+import com.PriceHunter.AuthService.models.enums.Role;
 import com.PriceHunter.AuthService.models.domain.AuthDomain;
 import com.PriceHunter.AuthService.models.domain.RefreshTokenDomain;
 import com.PriceHunter.AuthService.models.dto.RegisterDTO;
-import com.PriceHunter.AuthService.models.dto.TokensDto;
+import com.PriceHunter.AuthService.models.dto.TokensDTO;
 import com.PriceHunter.AuthService.models.enums.UpdateType;
 import com.PriceHunter.AuthService.models.exceptions.*;
 import com.PriceHunter.AuthService.services.interfaces.AuthMapper;
@@ -75,7 +75,7 @@ public class AuthService {
                 .compact();
     }
 
-    public TokensDto register(RegisterDTO registerDTO) {
+    public TokensDTO register(RegisterDTO registerDTO) {
         try {
             String email = registerDTO.getEmail();
             String password = registerDTO.getPassword();
@@ -95,7 +95,7 @@ public class AuthService {
 
             newAuthEventKafkaTemplate.send("new_auth", createdAuth.getId(), createdAuth.getEmail());
 
-            return TokensDto.builder()
+            return TokensDTO.builder()
                     .accessToken(accessToken)
                     .refreshToken(refreshTokenText)
                     .build();
@@ -108,7 +108,7 @@ public class AuthService {
     }
 
     @Transactional
-    public TokensDto rotateToken(String refreshTokenText) {
+    public TokensDTO rotateToken(String refreshTokenText) {
         try {
             if (refreshTokenText == null || refreshTokenText.isBlank()) {
                 throw new IllegalArgumentException("Token is null or blank");
@@ -156,7 +156,7 @@ public class AuthService {
             String newRefreshToken = saveNewRefreshToken(refreshToken.getUserId(), refreshToken.getEmail());
             String accessToken = generateAccessToken(refreshToken.getEmail(), refreshToken.getUserId());
 
-            return TokensDto.builder()
+            return TokensDTO.builder()
                     .refreshToken(newRefreshToken)
                     .accessToken(accessToken)
                     .build();

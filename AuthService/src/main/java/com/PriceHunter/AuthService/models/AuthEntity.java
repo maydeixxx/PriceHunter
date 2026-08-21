@@ -1,5 +1,6 @@
 package com.PriceHunter.AuthService.models;
 
+import com.PriceHunter.AuthService.models.enums.Role;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -8,6 +9,7 @@ import java.util.UUID;
 
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@ToString(exclude = {"passwordHash"})
 @Getter
 @Setter
 @Table(name = "auth_models")
@@ -24,7 +26,9 @@ public class AuthEntity {
     @Enumerated(EnumType.STRING)
     private Role role;
 
+    @Column(nullable = false)
     private Boolean enable;
+    @Column(nullable = false)
     private Boolean locked;
 
     private LocalDateTime createdAt;

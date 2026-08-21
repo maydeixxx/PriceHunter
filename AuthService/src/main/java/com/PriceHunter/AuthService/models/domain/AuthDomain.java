@@ -1,6 +1,6 @@
 package com.PriceHunter.AuthService.models.domain;
 
-import com.PriceHunter.AuthService.models.Role;
+import com.PriceHunter.AuthService.models.enums.Role;
 import com.PriceHunter.AuthService.models.exceptions.AuthArgumentException;
 import lombok.Getter;
 
