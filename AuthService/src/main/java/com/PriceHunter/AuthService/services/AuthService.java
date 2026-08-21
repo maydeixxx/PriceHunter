@@ -7,6 +7,7 @@ import com.PriceHunter.AuthService.models.domain.AuthDomain;
 import com.PriceHunter.AuthService.models.domain.RefreshTokenDomain;
 import com.PriceHunter.AuthService.models.dto.RegisterDTO;
 import com.PriceHunter.AuthService.models.dto.TokensDto;
+import com.PriceHunter.AuthService.models.enums.UpdateType;
 import com.PriceHunter.AuthService.models.exceptions.*;
 import com.PriceHunter.AuthService.services.interfaces.AuthMapper;
 import com.PriceHunter.AuthService.services.interfaces.AuthRepository;
@@ -159,7 +160,8 @@ public class AuthService {
                     .refreshToken(newRefreshToken)
                     .accessToken(accessToken)
                     .build();
-        } catch (TokenStoleException | RefreshTokenExpiredException | RefreshTokenNotFoundException | MalformedTokenException e) {
+        } catch (TokenStoleException | RefreshTokenExpiredException | RefreshTokenNotFoundException |
+                 MalformedTokenException e) {
             throw e;
         } catch (Exception e) {
             log.error("Error while rotating token: {}", e.getMessage());
@@ -183,6 +185,31 @@ public class AuthService {
         } catch (Exception e) {
             log.error("Error saving refresh token: {}", e.getMessage());
             throw new RuntimeException(String.format("Internal server error: %s", e.getMessage()));
+        }
+    }
+
+    public void updateAuthModel(String email, UpdateType updateType) {
+        try {
+            Optional<AuthEntity> authEntityByEmail = authRepository.findAuthEntityByEmail(email);
+            if (authEntityByEmail.isEmpty()) {
+                throw new AuthNotFoundException(String.format("Auth [%s] not found", email));
+            }
+            AuthDomain auth = authMapper.entityToDomain(authEntityByEmail.get());
+
+            switch (updateType) {
+                case UpdateType.DISABLE -> auth.disable();
+                case UpdateType.UNLOCK -> auth.unlock();
+                case UpdateType.ENABLE -> auth.enable();
+                case UpdateType.LOCK -> auth.lock();
+                default -> throw new AuthArgumentException("Unknown type of update");
+            }
+
+            authRepository.save(authMapper.domainToEntity(auth));
+        } catch (AuthNotFoundException | AuthArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Internal server error: {}", e.getMessage());
+            throw new RuntimeException(e);
         }
     }
 }
