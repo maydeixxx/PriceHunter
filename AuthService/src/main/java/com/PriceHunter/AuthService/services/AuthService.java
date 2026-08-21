@@ -17,7 +17,9 @@ import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -44,13 +46,19 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final RefreshTokenMapper refreshTokenMapper;
 
-    public AuthService(@Value("${secret_key}") String signingKey, BCryptPasswordEncoder passwordEncoder, AuthRepository authRepository, AuthMapper authMapper, RefreshTokenMapper refreshTokenMapper, RefreshTokenRepository refreshTokenRepository) {
+    private final KafkaTemplate<UUID, String> newAuthEventKafkaTemplate;
+
+    public AuthService(@Value("${secret_key}") String signingKey, BCryptPasswordEncoder passwordEncoder,
+                       AuthRepository authRepository,
+                       AuthMapper authMapper, RefreshTokenMapper refreshTokenMapper,
+                       RefreshTokenRepository refreshTokenRepository, @Qualifier("newAuthEventKafkaTemplate") KafkaTemplate<UUID, String> kafkaTemplate) {
         this.secretKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(signingKey));
         this.passwordEncoder = passwordEncoder;
         this.authRepository = authRepository;
         this.authMapper = authMapper;
         this.refreshTokenMapper = refreshTokenMapper;
         this.refreshTokenRepository = refreshTokenRepository;
+        this.newAuthEventKafkaTemplate = kafkaTemplate;
     }
 
     public String generateAccessToken(String email, UUID userId) {
@@ -84,6 +92,8 @@ public class AuthService {
             String refreshTokenText = saveNewRefreshToken(createdAuth.getId(), createdAuth.getEmail());
             String accessToken = generateAccessToken(email, createdAuth.getId());
 
+            newAuthEventKafkaTemplate.send("new_auth", createdAuth.getId(), createdAuth.getEmail());
+
             return TokensDto.builder()
                     .accessToken(accessToken)
                     .refreshToken(refreshTokenText)
@@ -94,7 +104,6 @@ public class AuthService {
             log.error("Unexpected error while registering user: {}", e.getMessage());
             throw new RuntimeException(String.format("Internal server error: %s", e.getMessage()));
         }
-
     }
 
     @Transactional
@@ -123,7 +132,7 @@ public class AuthService {
                 throw new RefreshTokenNotFoundException("Refresh token not found");
             }
 
-            RefreshToken refreshToken = optionalRefreshToken.get();
+            RefreshTokenDomain refreshToken = refreshTokenMapper.entityToDomain(optionalRefreshToken.get());
 
             if (!passwordEncoder.matches(tokenSecret, refreshToken.getTokenHash())) {
                 throw new RefreshTokenNotFoundException("Invalid token");
@@ -133,16 +142,17 @@ public class AuthService {
                 throw new RefreshTokenExpiredException("Token expired");
             }
 
-            if (refreshToken.isRevoked()) {
+            if (refreshToken.getRevoked()) {
 
                 log.warn("TOKEN INCIDENT: userId = {}, tokenId = {}, email = {}", refreshToken.getUserId(), refreshToken.getId(), refreshToken.getEmail());
                 revokeAllUsersTokens(refreshToken.getUserId());
                 throw new TokenStoleException("Token is reused! Please re-login in your account");
             }
 
-            refreshToken.setRevoked(true);
-            String newRefreshToken = saveNewRefreshToken(refreshToken.getUserId(), refreshToken.getEmail());
+            refreshToken.revokeToken();
+            refreshTokenRepository.save(refreshTokenMapper.domainToEntity(refreshToken));
 
+            String newRefreshToken = saveNewRefreshToken(refreshToken.getUserId(), refreshToken.getEmail());
             String accessToken = generateAccessToken(refreshToken.getEmail(), refreshToken.getUserId());
 
             return TokensDto.builder()
@@ -159,8 +169,9 @@ public class AuthService {
 
     @Transactional
     protected void revokeAllUsersTokens(UUID userId) {
-        List<RefreshToken> refreshTokensByUserId = refreshTokenRepository.findRefreshTokensByUserId(userId);
-        refreshTokensByUserId.forEach(token -> token.setRevoked(true));
+        List<RefreshTokenDomain> refreshTokensByUserId = refreshTokenRepository.findRefreshTokensByUserId(userId).stream().map(refreshTokenMapper::entityToDomain).toList();
+        refreshTokensByUserId.forEach(RefreshTokenDomain::revokeToken);
+        refreshTokenRepository.saveAll(refreshTokensByUserId.stream().map(refreshTokenMapper::domainToEntity).toList());
     }
 
     private String saveNewRefreshToken(UUID userId, String email) {

@@ -82,18 +82,30 @@ public class AuthDomain {
     }
 
     public void disable() {
+        if (!this.enabled) {
+            throw new AuthArgumentException("Auth is already disabled");
+        }
         this.enabled = false;
     }
 
     public void lock() {
+        if (this.locked) {
+            throw new AuthArgumentException("Auth is already locked");
+        }
         this.locked = true;
     }
 
     public void enable() {
+        if (this.enabled) {
+            throw new AuthArgumentException("Auth is already enabled");
+        }
         this.enabled = true;
     }
 
     public void unlock() {
+        if (!this.locked) {
+            throw new AuthArgumentException("Auth is already unlocked");
+        }
         this.locked = false;
     }
 }

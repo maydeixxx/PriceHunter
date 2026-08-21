@@ -16,7 +16,7 @@ public class RefreshTokenDomain {
     private final String tokenHash;
     private final LocalDateTime createdAt;
     private final LocalDateTime expiresAt;
-    private final Boolean revoked;
+    private Boolean revoked;
 
     private RefreshTokenDomain(UUID id, UUID userId, String email, String tokenHash, LocalDateTime createdAt, LocalDateTime expiresAt, Boolean revoked) {
         this.id = id;
@@ -51,5 +51,12 @@ public class RefreshTokenDomain {
 
         UUID uuid = UUID.randomUUID();
         return new RefreshTokenDomain(uuid, userId, email, tokenHash, createdAt, expiresAt, false);
+    }
+
+    public void revokeToken() {
+        if (this.revoked) {
+            throw new RefreshTokenArgumentException("Token already revoked");
+        }
+        this.revoked = true;
     }
 }
