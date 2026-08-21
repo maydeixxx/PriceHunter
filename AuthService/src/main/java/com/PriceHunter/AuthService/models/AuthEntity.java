@@ -15,6 +15,7 @@ import java.util.UUID;
 @Table(name = "auth_models")
 public class AuthEntity {
     @Id
+    @Column(updatable = false, nullable = false)
     private UUID id;
 
     @Column(unique = true, nullable = false)

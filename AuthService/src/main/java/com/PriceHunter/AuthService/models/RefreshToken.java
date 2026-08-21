@@ -1,18 +1,20 @@
 package com.PriceHunter.AuthService.models;
 
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.ToString;
+import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Data
+@Getter
+@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 @ToString(exclude = {"tokenHash"})
 @Table(name = "refresh_tokens")
 public class RefreshToken {
     @Id
+    @Column(updatable = false, nullable = false)
     private UUID id;
 
     @Column(nullable = false)
@@ -25,4 +27,16 @@ public class RefreshToken {
     private LocalDateTime createdAt;
     private LocalDateTime expiresAt;
     private boolean revoked;
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof RefreshToken that)) return false;
+        return id != null && id.equals(that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return id.hashCode();
+    }
 }
