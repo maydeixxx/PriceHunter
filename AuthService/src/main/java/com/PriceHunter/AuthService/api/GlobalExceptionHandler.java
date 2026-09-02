@@ -63,6 +63,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(409).body(errorResponse);
     }
 
+    @ExceptionHandler(LoginException.class)
+    public ResponseEntity<ErrorResponseDTO> handleLoginException(LoginException ex, WebRequest request) {
+        ErrorResponseDTO errorResponse = buildErrorResponse(request, "login error", ex.getMessage(), 400);
+        return ResponseEntity.status(400).body(errorResponse);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponseDTO> handleMethodArgumentNotValidException(MethodArgumentNotValidException ex, WebRequest request) {
         String errorMessage = ex.getFieldErrors()

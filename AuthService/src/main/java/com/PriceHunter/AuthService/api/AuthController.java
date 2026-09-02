@@ -1,5 +1,6 @@
 package com.PriceHunter.AuthService.api;
 
+import com.PriceHunter.AuthService.models.dto.LoginDTO;
 import com.PriceHunter.AuthService.models.dto.RegisterDTO;
 import com.PriceHunter.AuthService.models.dto.TokensDTO;
 import com.PriceHunter.AuthService.models.dto.UpdateAuthDTO;
@@ -32,5 +33,11 @@ public class AuthController {
     public ResponseEntity<String> updateAuth(@RequestBody @Valid UpdateAuthDTO updateAuthDTO) {
         authService.updateAuthModel(updateAuthDTO.getEmail(), updateAuthDTO.getUpdateType());
         return ResponseEntity.ok(String.format("User [%s] updated", updateAuthDTO.getEmail()));
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<TokensDTO> login(@RequestBody LoginDTO loginDTO) {
+        TokensDTO tokens = authService.login(loginDTO);
+        return ResponseEntity.ok(tokens);
     }
 }

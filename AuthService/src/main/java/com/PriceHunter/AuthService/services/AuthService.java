@@ -2,6 +2,7 @@ package com.PriceHunter.AuthService.services;
 
 import com.PriceHunter.AuthService.models.AuthEntity;
 import com.PriceHunter.AuthService.models.RefreshToken;
+import com.PriceHunter.AuthService.models.dto.LoginDTO;
 import com.PriceHunter.AuthService.models.enums.Role;
 import com.PriceHunter.AuthService.models.domain.AuthDomain;
 import com.PriceHunter.AuthService.models.domain.RefreshTokenDomain;
@@ -144,7 +145,6 @@ public class AuthService {
             }
 
             if (refreshToken.getRevoked()) {
-
                 log.warn("TOKEN INCIDENT: userId = {}, tokenId = {}, email = {}", refreshToken.getUserId(), refreshToken.getId(), refreshToken.getEmail());
                 revokeAllUsersTokens(refreshToken.getUserId());
                 throw new TokenStoleException("Token is reused! Please re-login in your account");
@@ -206,6 +206,37 @@ public class AuthService {
 
             authRepository.save(authMapper.domainToEntity(auth));
         } catch (AuthNotFoundException | AuthArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Internal server error: {}", e.getMessage());
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Transactional
+    public TokensDTO login(LoginDTO loginDTO) {
+        try {
+            String email = loginDTO.getEmail();
+            String password = loginDTO.getPassword();
+
+            AuthEntity auth = authRepository.findAuthEntityByEmail(email).orElseThrow(() -> new AuthNotFoundException(String.format("Auth %s not found", email)));
+            String passwordHash = auth.getPasswordHash();
+
+            boolean isPasswordCorrect = passwordEncoder.matches(password, passwordHash);
+            if (!isPasswordCorrect) {
+                throw new LoginException("Password is incorrect");
+            }
+
+            UUID userId = auth.getId();
+            String refreshToken = saveNewRefreshToken(userId, email);
+            String accessToken = generateAccessToken(email, userId);
+            auth.setLastLoginAt(LocalDateTime.now());
+
+            return TokensDTO.builder()
+                    .accessToken(accessToken)
+                    .refreshToken(refreshToken)
+                    .build();
+        } catch (LoginException | AuthNotFoundException e) {
             throw e;
         } catch (Exception e) {
             log.error("Internal server error: {}", e.getMessage());
