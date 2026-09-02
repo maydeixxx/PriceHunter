@@ -13,6 +13,7 @@
 	<version>0.0.1-SNAPSHOT</version>
 	<name/>
 	<modules>
+		<module>UserService</module>
 		<module>AuthService</module>
 	</modules>
 	<packaging>pom</packaging>
