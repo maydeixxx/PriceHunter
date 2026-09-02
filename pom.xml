@@ -12,6 +12,10 @@
 	<artifactId>PriceHunter</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name/>
+	<modules>
+		<module>AuthService</module>
+	</modules>
+	<packaging>pom</packaging>
 	<description/>
 	<url/>
 	<licenses>
