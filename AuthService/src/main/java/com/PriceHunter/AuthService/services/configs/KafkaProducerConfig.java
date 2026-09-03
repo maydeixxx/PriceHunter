@@ -1,5 +1,6 @@
 package com.PriceHunter.AuthService.services.configs;
 
+import com.PriceHunter.AuthService.eventModels.AuthCreatedEventModel;
 import lombok.RequiredArgsConstructor;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -10,6 +11,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.support.serializer.JacksonJsonSerializer;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -22,7 +24,7 @@ public class KafkaProducerConfig {
     private String bootstrapServers;
 
     @Bean
-    public ProducerFactory<UUID, String> newAuthEventProducerFactory() {
+    public ProducerFactory<UUID, AuthCreatedEventModel> newAuthEventProducerFactory() {
         Map<String, Object> props = new HashMap<>();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(ProducerConfig.ACKS_CONFIG, "all");
@@ -30,17 +32,17 @@ public class KafkaProducerConfig {
         props.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, 15000);
         props.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, 5000);
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, UUIDSerializer.class);
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JacksonJsonSerializer.class);
 
         return new DefaultKafkaProducerFactory<>(
                 props,
                 new UUIDSerializer(),
-                new StringSerializer()
+                new JacksonJsonSerializer<>()
         );
     }
 
     @Bean
-    public KafkaTemplate<UUID, String> newAuthEventKafkaTemplate() {
+    public KafkaTemplate<UUID, AuthCreatedEventModel> newAuthEventKafkaTemplate() {
         return new KafkaTemplate<>(newAuthEventProducerFactory());
     }
 

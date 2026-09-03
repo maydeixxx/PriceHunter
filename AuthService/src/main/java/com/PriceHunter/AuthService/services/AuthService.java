@@ -1,5 +1,6 @@
 package com.PriceHunter.AuthService.services;
 
+import com.PriceHunter.AuthService.eventModels.AuthCreatedEventModel;
 import com.PriceHunter.AuthService.models.AuthEntity;
 import com.PriceHunter.AuthService.models.RefreshToken;
 import com.PriceHunter.AuthService.models.dto.LoginDTO;
@@ -48,12 +49,12 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final RefreshTokenMapper refreshTokenMapper;
 
-    private final KafkaTemplate<UUID, String> newAuthEventKafkaTemplate;
+    private final KafkaTemplate<UUID, AuthCreatedEventModel> newAuthEventKafkaTemplate;
 
     public AuthService(@Value("${secret_key}") String signingKey, BCryptPasswordEncoder passwordEncoder,
                        AuthRepository authRepository,
                        AuthMapper authMapper, RefreshTokenMapper refreshTokenMapper,
-                       RefreshTokenRepository refreshTokenRepository, @Qualifier("newAuthEventKafkaTemplate") KafkaTemplate<UUID, String> kafkaTemplate) {
+                       RefreshTokenRepository refreshTokenRepository, @Qualifier("newAuthEventKafkaTemplate") KafkaTemplate<UUID, AuthCreatedEventModel> kafkaTemplate) {
         this.secretKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(signingKey));
         this.passwordEncoder = passwordEncoder;
         this.authRepository = authRepository;
@@ -87,14 +88,19 @@ public class AuthService {
             }
 
             String encodedPassword = passwordEncoder.encode(password);
-            AuthEntity createdAuth = authMapper.domainToEntity(AuthDomain.createAuthModel(email, encodedPassword, Role.USER, true, false, LocalDateTime.now(), LocalDateTime.now()));
+            LocalDateTime createdAt = LocalDateTime.now();
+            AuthEntity createdAuth = authMapper.domainToEntity(AuthDomain.createAuthModel(email, encodedPassword, Role.USER, true, false, createdAt, LocalDateTime.now()));
             authRepository.save(createdAuth);
             log.info("Saved new auth, id - {}", createdAuth.getId());
 
             String refreshTokenText = saveNewRefreshToken(createdAuth.getId(), createdAuth.getEmail());
             String accessToken = generateAccessToken(email, createdAuth.getId());
 
-            newAuthEventKafkaTemplate.send("new_auth", createdAuth.getId(), createdAuth.getEmail());
+            AuthCreatedEventModel eventModel = AuthCreatedEventModel.builder()
+                    .email(email)
+                    .createdAt(createdAt)
+                    .build();
+            newAuthEventKafkaTemplate.send("new_auth", createdAuth.getId(), eventModel);
 
             return TokensDTO.builder()
                     .accessToken(accessToken)
@@ -219,7 +225,7 @@ public class AuthService {
             String email = loginDTO.getEmail();
             String password = loginDTO.getPassword();
 
-            AuthEntity auth = authRepository.findAuthEntityByEmail(email).orElseThrow(() -> new AuthNotFoundException(String.format("Auth %s not found", email)));
+            AuthDomain auth = authMapper.entityToDomain(authRepository.findAuthEntityByEmail(email).orElseThrow(() -> new AuthNotFoundException(String.format("Auth %s not found", email))));
             String passwordHash = auth.getPasswordHash();
 
             boolean isPasswordCorrect = passwordEncoder.matches(password, passwordHash);
@@ -230,8 +236,9 @@ public class AuthService {
             UUID userId = auth.getId();
             String refreshToken = saveNewRefreshToken(userId, email);
             String accessToken = generateAccessToken(email, userId);
-            auth.setLastLoginAt(LocalDateTime.now());
+            auth.updateLastLoginAt(LocalDateTime.now());
 
+            authRepository.save(authMapper.domainToEntity(auth));
             return TokensDTO.builder()
                     .accessToken(accessToken)
                     .refreshToken(refreshToken)
