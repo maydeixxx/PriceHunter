@@ -1,6 +1,5 @@
 package com.PriceHunter.UserService.models.domain;
 
-import com.PriceHunter.UserService.models.entity.NotificationSettings;
 import com.PriceHunter.UserService.models.exceptions.UserArgumentException;
 import lombok.Getter;
 
@@ -12,22 +11,22 @@ import java.util.UUID;
 public class UserDomain {
     private final UUID userId;
 
-    private final String email;
+    private String email;
 
-    private final String firstName;
-    private final String lastName;
+    private String firstName;
+    private String lastName;
 
     private final Long chatId;
     private final Long telegramLinkCode;
     private LocalDateTime linkedAt;
 
-    private final NotificationSettings notificationSettings;
+    private NotificationSettingsDomain notificationSettings;
 
-    private LocalDateTime createdAt;
+    private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
 
-    private UserDomain(UUID userId, String email, String firstName, String lastName, Long chatId, Long telegramLinkCode, LocalDateTime linkedAt, NotificationSettings notificationSettings, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    private UserDomain(UUID userId, String email, String firstName, String lastName, Long chatId, Long telegramLinkCode, LocalDateTime linkedAt, NotificationSettingsDomain notificationSettings, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.userId = userId;
         this.email = email;
         this.firstName = firstName;
@@ -40,7 +39,7 @@ public class UserDomain {
         this.updatedAt = updatedAt;
     }
 
-    public static UserDomain createUserDomain(UUID userId, String email, String firstName, String lastName, Long chatId, Long telegramLinkCode, LocalDateTime linkedAt, NotificationSettings notificationSettings, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public static UserDomain createUserDomain(UUID userId, String email, String firstName, String lastName, Long chatId, Long telegramLinkCode, LocalDateTime linkedAt, NotificationSettingsDomain notificationSettings, LocalDateTime createdAt, LocalDateTime updatedAt) {
         if (userId == null) {
             throw new UserArgumentException("User id cant be null");
         }
@@ -65,8 +64,8 @@ public class UserDomain {
             throw new UserArgumentException("Created at cant be null");
         }
 
-        if (updatedAt == null || updatedAt.isBefore(LocalDateTime.now())) {
-            throw new UserArgumentException("Updated at cant be null or before than present");
+        if (updatedAt == null) {
+            throw new UserArgumentException("Updated at cant be null");
         }
 
         return new UserDomain(userId, email, firstName, lastName, chatId, telegramLinkCode, linkedAt, notificationSettings, createdAt, updatedAt);
@@ -87,11 +86,35 @@ public class UserDomain {
         this.linkedAt = linkedAt;
     }
 
-    public void updateCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
     public void updateUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public void updateEmail(String email) {
+        if (email == null || this.email.equals(email))  {
+            throw new UserArgumentException(String.format("New field [%s] cant be null or same", email));
+        }
+        this.email = email;
+    }
+
+    public void updateFirstname(String firstName) {
+        if (firstName == null || this.firstName.equals(firstName)) {
+            throw new UserArgumentException(String.format("New field [%s] cant be null or same", firstName));
+        }
+        this.firstName = firstName;
+    }
+
+    public void updateLastname(String lastName) {
+        if (lastName == null || this.lastName.equals(lastName)) {
+            throw new UserArgumentException(String.format("New field [%s] cant be null or same", lastName));
+        }
+        this.lastName = lastName;
+    }
+
+    public void updateNotificationSettings(NotificationSettingsDomain notificationSettings) {
+        if (notificationSettings == null || this.notificationSettings.equals(notificationSettings)) {
+            throw new UserArgumentException(String.format("New field [%s] cant be null or same", notificationSettings));
+        }
+        this.notificationSettings = notificationSettings;
     }
 }
