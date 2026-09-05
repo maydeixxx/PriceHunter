@@ -48,14 +48,6 @@ public class UserDomain {
             throw new UserArgumentException("Email cant be blank or null");
         }
 
-        if (firstName == null || firstName.isBlank()) {
-            throw new UserArgumentException("First name cant be blank or null");
-        }
-
-        if (lastName == null || lastName.isBlank()) {
-            throw new UserArgumentException("Last name cant be blank or null");
-        }
-
         if (notificationSettings == null) {
             throw new UserArgumentException("Settings cant be null");
         }

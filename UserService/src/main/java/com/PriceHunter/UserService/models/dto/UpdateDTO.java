@@ -12,7 +12,6 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 public class UpdateDTO {
-    private UUID userId;
     private FieldToUpdate fieldToUpdate;
 
     private String email;

@@ -23,14 +23,18 @@ public class KafkaListenerConfig {
     @Bean
     public ConsumerFactory<UUID, AuthCreatedEventModel> authCreatedEventModelConsumerFactory() {
         Map<String, Object> props = new HashMap<>();
+
+        JacksonJsonDeserializer<AuthCreatedEventModel> deserializer = new JacksonJsonDeserializer<>();
+        deserializer.ignoreTypeHeaders();
+
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, UUIDDeserializer.class);
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JacksonJsonDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, deserializer);
 
         return new DefaultKafkaConsumerFactory<>(
                 props,
                 new UUIDDeserializer(),
-                new JacksonJsonDeserializer<>()
+                deserializer
         );
     }
 

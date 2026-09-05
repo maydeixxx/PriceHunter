@@ -4,6 +4,7 @@ import com.PriceHunter.UserService.models.exceptions.NotificationSettingsArgExce
 import lombok.Getter;
 
 import java.math.BigDecimal;
+import java.util.Objects;
 
 @Getter
 public class NotificationSettingsDomain {
@@ -27,5 +28,16 @@ public class NotificationSettingsDomain {
         }
 
         return new NotificationSettingsDomain(notifyOnPriceDrop, checkIntervalInMinutes, defaultDropThresholdPercent);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof NotificationSettingsDomain that)) return false;
+        return Objects.equals(notifyOnPriceDrop, that.notifyOnPriceDrop) && Objects.equals(checkIntervalInMinutes, that.checkIntervalInMinutes) && Objects.equals(defaultDropThresholdPercent, that.defaultDropThresholdPercent);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(notifyOnPriceDrop, checkIntervalInMinutes, defaultDropThresholdPercent);
     }
 }
