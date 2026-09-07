@@ -7,12 +7,11 @@ import com.PriceHunter.UserService.models.dto.UserDTO;
 import com.PriceHunter.UserService.service.UserService;
 import com.PriceHunter.UserService.service.interfaces.NotificationSettingsMapper;
 import com.PriceHunter.UserService.service.interfaces.UserMapper;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Objects;
 import java.util.UUID;
 
 @RestController
@@ -24,8 +23,8 @@ public class UserController {
     private final NotificationSettingsMapper notificationSettingsMapper;
 
     @GetMapping()
-    public ResponseEntity<UserDTO> getSelfInfo() {
-        UUID userId = (UUID) Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal();
+    public ResponseEntity<UserDTO> getSelfInfo(HttpServletRequest request) {
+        UUID userId = (UUID) request.getAttribute("userId");
         UserDomain domainUser = userService.findUserByUserId(userId);
         NotificationSettingsDTO settings = notificationSettingsMapper.domainToDto(domainUser.getNotificationSettings());
         UserDTO user = userMapper.domainToDto(domainUser, settings);
@@ -34,8 +33,8 @@ public class UserController {
     }
 
     @PatchMapping()
-    public ResponseEntity<String> updateProfile(@RequestBody UpdateDTO updateDTO) {
-        UUID userId = (UUID) Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal();
+    public ResponseEntity<String> updateProfile(@RequestBody UpdateDTO updateDTO, HttpServletRequest request) {
+        UUID userId = (UUID) request.getAttribute("userId");
         userService.updateUser(updateDTO, userId);
 
         return ResponseEntity.ok("Your profile successfully updated");
