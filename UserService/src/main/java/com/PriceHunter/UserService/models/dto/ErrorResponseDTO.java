@@ -1,12 +1,12 @@
-package com.PriceHunter.AuthService.models.dto;
+package com.PriceHunter.UserService.models.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
+@AllArgsConstructor
 @Builder
 @Getter
-@AllArgsConstructor
 public class ErrorResponseDTO {
     private final String error;
     private final String errorMessage;

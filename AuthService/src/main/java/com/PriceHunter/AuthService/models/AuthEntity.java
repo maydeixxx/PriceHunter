@@ -28,7 +28,7 @@ public class AuthEntity {
     private Role role;
 
     @Column(nullable = false)
-    private Boolean enable;
+    private Boolean enabled;
     @Column(nullable = false)
     private Boolean locked;
 
