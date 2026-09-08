@@ -20,17 +20,20 @@ public class ProductDomain {
 
     private final Shop shop;
 
-    private final BigDecimal lastPrice;
+    private Boolean active;
+
+    private BigDecimal lastPrice;
 
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 
-    private ProductDomain(UUID productId, UUID userId, String url, String title, Shop shop, BigDecimal lastPrice, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    private ProductDomain(UUID productId, UUID userId, String url, String title, Shop shop, Boolean active, BigDecimal lastPrice, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.productId = productId;
         this.userId = userId;
         this.url = url;
         this.title = title;
         this.shop = shop;
+        this.active = active;
         this.lastPrice = lastPrice;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -53,7 +56,22 @@ public class ProductDomain {
             throw new ProductArgsException("Shop is required");
         }
 
-        return new ProductDomain(productId, userId, url, title, shop, lastPrice, createdAt, updatedAt);
+        return new ProductDomain(productId, userId, url, title, shop, true, lastPrice, createdAt, updatedAt);
+    }
+
+    public void updatePrice(BigDecimal newPrice) {
+        if (lastPrice.compareTo(newPrice) == 0) return;
+        this.lastPrice = newPrice;
+    }
+
+    public void disable() {
+        if (!this.active) throw new ProductArgsException("Product already disabled");
+        this.active = false;
+    }
+
+    public void enable() {
+        if (this.active) throw new ProductArgsException("Product already active");
+        this.active = true;
     }
 
     @Override

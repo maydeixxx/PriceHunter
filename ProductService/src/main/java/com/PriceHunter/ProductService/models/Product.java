@@ -31,6 +31,8 @@ public class Product {
     @Enumerated(EnumType.STRING)
     private Shop shop;
 
+    private Boolean active;
+
     @Column(nullable = false)
     private BigDecimal lastPrice;
 
