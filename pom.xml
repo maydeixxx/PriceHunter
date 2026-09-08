@@ -13,6 +13,7 @@
 	<version>0.0.1-SNAPSHOT</version>
 	<name/>
 	<modules>
+		<module>ProductService</module>
 		<module>EurekaServer</module>
 		<module>GatewayAPI</module>
 		<module>UserService</module>
